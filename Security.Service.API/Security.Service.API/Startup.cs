@@ -7,8 +7,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Security.Service.API.Configuration;
+using Security.Service.API.Data;
+using Microsoft.EntityFrameworkCore;
+using Security.Service.API.DAL.Interfaces;
+using Security.Service.API.DAL.Implementation;
+using Security.Service.API.BAL.Interfaces;
+using Security.Service.API.BAL.Implementation;
 
 namespace Security.Service.API
 {
@@ -26,10 +34,28 @@ namespace Security.Service.API
         {
 
             services.AddControllers();
-
-
+           
             // Register the Swagger generator, defining 1 or more Swagger documents
             services.AddSwaggerGen();
+
+            
+
+            var configuration = new ConfigurationBuilder()
+                                .SetBasePath(Directory.GetCurrentDirectory())
+                                .AddJsonFile("appsettings.json", false)
+                                .Build();
+
+            services.AddOptions();
+            services.AddDbContext<CTGeneralHospitalContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddTransient<IRepository, Repository>();
+            services.AddTransient<IAuthService, AuthService>();
+            services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
+            services.AddCors(c =>
+            {
+                c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+            });
+
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -40,27 +66,19 @@ namespace Security.Service.API
                 app.UseDeveloperExceptionPage();
             }
 
-
             // Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();
-            app.UseSwaggerUI();
 
             // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.)
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-                c.RoutePrefix = string.Empty;
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Security Service API V1");
             });
-            app.UseSwagger(c =>
-            {
-                c.SerializeAsV2 = true;
-            });
-
-            
            
             app.UseRouting();
-
+            app.UseStaticFiles();
             app.UseAuthorization();
+            app.UseCors(options => options.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 
             app.UseEndpoints(endpoints =>
             {
